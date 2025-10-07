@@ -73,6 +73,7 @@ const signup = async (req, res) => {
 };
 
 // Verify Signup OTP
+// Verify Signup OTP
 const verifySignupOTP = async (req, res) => {
   try {
     const { mobileNumber, otp } = req.body;
@@ -114,18 +115,18 @@ const verifySignupOTP = async (req, res) => {
       }
     }
 
-    // Create user
+    // ✅ Fixed: set role manually instead of using undefined `user.role`
     const user = new User({
       fullName: cachedData.fullName,
       mobileNumber: formattedMobile,
       referCode: userReferCode,
       referredBy: cachedData.referCode || null,
-      role: user.role
+      role: 'user' // Default role assigned properly
     });
 
     await user.save();
 
-    // Create wallet for user
+    // Create wallet for new user
     const wallet = new Wallet({
       userId: user._id
     });
@@ -135,17 +136,16 @@ const verifySignupOTP = async (req, res) => {
     if (cachedData.referCode) {
       const referrer = await User.findOne({ referCode: cachedData.referCode });
       if (referrer) {
-        referrer.referralEarning += 20; // Add 20 rupees referral bonus
+        referrer.referralEarning += 20;
         await referrer.save();
 
-        // Add to referrer's wallet
         const referrerWallet = await Wallet.findOne({ userId: referrer._id });
         if (referrerWallet) {
           referrerWallet.winningBalance += 20;
           referrerWallet.totalBalance += 20;
           await referrerWallet.save();
 
-          // Create transaction record for referral bonus
+          // Add referral transaction
           const referralTransaction = new Transaction({
             userId: referrer._id,
             type: 'referral',
@@ -159,7 +159,7 @@ const verifySignupOTP = async (req, res) => {
       }
     }
 
-    // Generate JWT token
+    // Generate JWT
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -176,9 +176,9 @@ const verifySignupOTP = async (req, res) => {
       user: {
         id: user._id,
         fullName: user.fullName,
-        username: user.username,
         mobileNumber: user.mobileNumber,
-        referCode: user.referCode
+        referCode: user.referCode,
+        referredBy: user.referredBy
       }
     });
 
