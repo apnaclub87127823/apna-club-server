@@ -9,7 +9,9 @@ const {
     declareWinner,
     getAllDisputes,
     getDisputeScreenshot,
-    resolveDispute
+    resolveDispute,
+    addDepositFundsToUser,
+    getAllUsers // Import the new function
 } = require('../controllers/adminController');
 const adminAuth = require('../middleware/adminAuth');
 
@@ -44,5 +46,11 @@ router.get('/withdrawals/:transactionId', adminAuth, getWithdrawalById);
 
 // PUT /api/admin/withdrawals/:transactionId/status - Update withdrawal status
 router.put('/withdrawals/:transactionId/status', adminAuth, updateWithdrawalStatus);
+
+// POST /api/admin/add-deposit-funds - Admin adds funds to user's deposit wallet
+router.post('/add-deposit-funds', adminAuth, addDepositFundsToUser);
+
+// GET /api/admin/users - Get all users with selected fields
+router.get('/users', adminAuth, getAllUsers); // New route
 
 module.exports = router;
