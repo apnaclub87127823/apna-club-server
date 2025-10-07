@@ -3,7 +3,7 @@ const User = require('../models/User');
 const Wallet = require('../models/Wallet');
 const Room = require('../models/Room');
 const RoomDispute = require('../models/RoomDispute');
-
+// .05
 // Get all withdrawal requests
 const getAllWithdrawals = async (req, res) => {
     try {
@@ -370,113 +370,113 @@ const provideRoomCode = async (req, res) => {
 };
 
 // Declare game winner
-const declareWinner = async (req, res) => {
-    try {
-        const { roomId, winnerUserId } = req.body;
+// const declareWinner = async (req, res) => {
+//     try {
+//         const { roomId, winnerUserId } = req.body;
 
-        if (!roomId || !winnerUserId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Room ID and winner user ID are required'
-            });
-        }
+//         if (!roomId || !winnerUserId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Room ID and winner user ID are required'
+//             });
+//         }
 
-        const room = await Room.findOne({ roomId }).populate('players.userId');
-        if (!room) {
-            return res.status(404).json({
-                success: false,
-                message: 'Room not found'
-            });
-        }
+//         const room = await Room.findOne({ roomId }).populate('players.userId');
+//         if (!room) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Room not found'
+//             });
+//         }
 
-        if (room.status !== 'live') {
-            return res.status(400).json({
-                success: false,
-                message: 'Room is not live. Cannot declare winner.'
-            });
-        }
+//         if (room.status !== 'live') {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Room is not live. Cannot declare winner.'
+//             });
+//         }
 
-        if (room.winner) {
-            return res.status(400).json({
-                success: false,
-                message: 'Winner already declared for this room'
-            });
-        }
+//         if (room.winner) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Winner already declared for this room'
+//             });
+//         }
 
-        // Find winner in room players
-        const winnerPlayer = room.players.find(player =>
-            player.userId._id.toString() === winnerUserId
-        );
+//         // Find winner in room players
+//         const winnerPlayer = room.players.find(player =>
+//             player.userId._id.toString() === winnerUserId
+//         );
 
-        if (!winnerPlayer) {
-            return res.status(400).json({
-                success: false,
-                message: 'Winner must be one of the room players'
-            });
-        }
+//         if (!winnerPlayer) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Winner must be one of the room players'
+//             });
+//         }
 
-        // Calculate service charge (3%)
-        const serviceCharge = Math.floor(room.totalPrizePool * 0.03);
-        const netWinning = room.totalPrizePool - serviceCharge;
+//         // Calculate service charge (5%)
+//         const serviceCharge = Math.floor(room.totalPrizePool * 0.05); // Changed from 0.03 to 0.05
+//         const netWinning = room.totalPrizePool - serviceCharge;
 
-        // Update room with winner
-        await Room.findByIdAndUpdate(room._id, {
-            winner: {
-                userId: winnerPlayer.userId._id,
-                ludoUsername: winnerPlayer.ludoUsername,
-                amountWon: room.totalPrizePool,
-                netAmount: netWinning
-            },
-            status: 'finished',
-            gameEndedAt: new Date(),
-            serviceCharge: serviceCharge,
-            resultCheckedAt: new Date()
-        });
+//         // Update room with winner
+//         await Room.findByIdAndUpdate(room._id, {
+//             winner: {
+//                 userId: winnerPlayer.userId._id,
+//                 ludoUsername: winnerPlayer.ludoUsername,
+//                 amountWon: room.totalPrizePool,
+//                 netAmount: netWinning
+//             },
+//             status: 'finished',
+//             gameEndedAt: new Date(),
+//             serviceCharge: serviceCharge,
+//             resultCheckedAt: new Date()
+//         });
 
-        // Add winning amount to winner's wallet
-        const winnerWallet = await Wallet.findOne({ userId: winnerPlayer.userId._id });
-        if (winnerWallet) {
-            winnerWallet.winningBalance += netWinning;
-            winnerWallet.totalBalance += netWinning;
-            await winnerWallet.save();
+//         // Add winning amount to winner's wallet
+//         const winnerWallet = await Wallet.findOne({ userId: winnerPlayer.userId._id });
+//         if (winnerWallet) {
+//             winnerWallet.winningBalance += netWinning;
+//             winnerWallet.totalBalance += netWinning;
+//             await winnerWallet.save();
 
-            // Create winning transaction
-            const winningTransaction = new Transaction({
-                userId: winnerPlayer.userId._id,
-                type: 'winning',
-                amount: netWinning,
-                status: 'success',
-                description: `Won room ${roomId} - ₹${netWinning} (after 3% service charge)`,
-                walletType: 'winning'
-            });
-            await winningTransaction.save();
-        }
+//             // Create winning transaction
+//             const winningTransaction = new Transaction({
+//                 userId: winnerPlayer.userId._id,
+//                 type: 'winning',
+//                 amount: netWinning,
+//                 status: 'success',
+//                 description: `Won room ${roomId} - ₹${netWinning} (after 5% service charge)`,
+//                 walletType: 'winning'
+//             });
+//             await winningTransaction.save();
+//         }
 
-        res.status(200).json({
-            success: true,
-            message: 'Winner declared successfully and money added to wallet',
-            data: {
-                roomId: room.roomId,
-                winner: {
-                    userId: winnerPlayer.userId._id,
-                    fullName: winnerPlayer.userId.fullName,
-                    ludoUsername: winnerPlayer.ludoUsername,
-                    amountWon: room.totalPrizePool,
-                    netAmount: netWinning
-                },
-                serviceCharge: serviceCharge,
-                status: 'finished'
-            }
-        });
+//         res.status(200).json({
+//             success: true,
+//             message: 'Winner declared successfully and money added to wallet',
+//             data: {
+//                 roomId: room.roomId,
+//                 winner: {
+//                     userId: winnerPlayer.userId._id,
+//                     fullName: winnerPlayer.userId.fullName,
+//                     ludoUsername: winnerPlayer.ludoUsername,
+//                     amountWon: room.totalPrizePool,
+//                     netAmount: netWinning
+//                 },
+//                 serviceCharge: serviceCharge,
+//                 status: 'finished'
+//             }
+//         });
 
-    } catch (error) {
-        console.error('Declare winner error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
-    }
-};
+//     } catch (error) {
+//         console.error('Declare winner error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Internal server error'
+//         });
+//     }
+// };
 
 // Get all room disputes
 const getAllDisputes = async (req, res) => {
@@ -591,143 +591,143 @@ const getDisputeScreenshot = async (req, res) => {
 };
 
 // Resolve room dispute
-const resolveDispute = async (req, res) => {
-    try {
-        const { roomId, winnerUserId, adminNotes } = req.body;
+// const resolveDispute = async (req, res) => {
+//     try {
+//         const { roomId, winnerUserId, adminNotes } = req.body;
 
-        if (!roomId || !winnerUserId) {
-            return res.status(400).json({
-                success: false,
-                message: 'Room ID and winner user ID are required'
-            });
-        }
+//         if (!roomId || !winnerUserId) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Room ID and winner user ID are required'
+//             });
+//         }
 
-        const room = await Room.findOne({ roomId }).populate('players.userId');
-        if (!room) {
-            return res.status(404).json({
-                success: false,
-                message: 'Room not found'
-            });
-        }
+//         const room = await Room.findOne({ roomId }).populate('players.userId');
+//         if (!room) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Room not found'
+//             });
+//         }
 
-        if (room.disputeStatus !== 'disputed') {
-            return res.status(400).json({
-                success: false,
-                message: 'This room is not in dispute status'
-            });
-        }
+//         if (room.disputeStatus !== 'disputed') {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'This room is not in dispute status'
+//             });
+//         }
 
-        // Find winner in room players
-        const winnerPlayer = room.players.find(player =>
-            player.userId._id.toString() === winnerUserId
-        );
+//         // Find winner in room players
+//         const winnerPlayer = room.players.find(player =>
+//             player.userId._id.toString() === winnerUserId
+//         );
 
-        if (!winnerPlayer) {
-            return res.status(400).json({
-                success: false,
-                message: 'Winner must be one of the room players'
-            });
-        }
+//         if (!winnerPlayer) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Winner must be one of the room players'
+//             });
+//         }
 
-        // Get all win claims for this room
-        const disputes = await RoomDispute.find({
-            roomId: roomId,
-            claimType: 'win'
-        });
+//         // Get all win claims for this room
+//         const disputes = await RoomDispute.find({
+//             roomId: roomId,
+//             claimType: 'win'
+//         });
 
-        // Find winner's dispute
-        const winnerDispute = disputes.find(dispute =>
-            dispute.claimedBy.toString() === winnerUserId
-        );
+//         // Find winner's dispute
+//         const winnerDispute = disputes.find(dispute =>
+//             dispute.claimedBy.toString() === winnerUserId
+//         );
 
-        if (!winnerDispute) {
-            return res.status(400).json({
-                success: false,
-                message: 'Selected winner must have claimed win for this room'
-            });
-        }
+//         if (!winnerDispute) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Selected winner must have claimed win for this room'
+//             });
+//         }
 
-        // Calculate service charge (3%)
-        const serviceCharge = Math.floor(room.totalPrizePool * 0.03);
-        const netWinning = room.totalPrizePool - serviceCharge;
+//         // Calculate service charge (5%)
+//         const serviceCharge = Math.floor(room.totalPrizePool * 0.05); // Changed from 0.03 to 0.05
+//         const netWinning = room.totalPrizePool - serviceCharge;
 
-        // Add winning amount to winner's wallet
-        const winnerWallet = await Wallet.findOne({ userId: winnerUserId });
-        if (winnerWallet) {
-            winnerWallet.winningBalance += netWinning;
-            winnerWallet.totalBalance += netWinning;
-            await winnerWallet.save();
+//         // Add winning amount to winner's wallet
+//         const winnerWallet = await Wallet.findOne({ userId: winnerUserId });
+//         if (winnerWallet) {
+//             winnerWallet.winningBalance += netWinning;
+//             winnerWallet.totalBalance += netWinning;
+//             await winnerWallet.save();
 
-            // Create winning transaction
-            const winningTransaction = new Transaction({
-                userId: winnerUserId,
-                type: 'winning',
-                amount: netWinning,
-                status: 'success',
-                description: `Won room ${roomId} (admin verified) - ₹${netWinning}`,
-                walletType: 'winning'
-            });
-            await winningTransaction.save();
-        }
+//             // Create winning transaction
+//             const winningTransaction = new Transaction({
+//                 userId: winnerUserId,
+//                 type: 'winning',
+//                 amount: netWinning,
+//                 status: 'success',
+//                 description: `Won room ${roomId} (admin verified) - ₹${netWinning}`,
+//                 walletType: 'winning'
+//             });
+//             await winningTransaction.save();
+//         }
 
-        // Update room with final winner
-        await Room.findOneAndUpdate({ roomId: roomId }, {
-            winner: {
-                userId: winnerUserId,
-                ludoUsername: winnerPlayer.ludoUsername,
-                amountWon: room.totalPrizePool,
-                netAmount: netWinning
-            },
-            status: 'finished',
-            disputeStatus: 'resolved',
-            gameEndedAt: new Date(),
-            serviceCharge: serviceCharge,
-            resultCheckedAt: new Date()
-        });
+//         // Update room with final winner
+//         await Room.findOneAndUpdate({ roomId: roomId }, {
+//             winner: {
+//                 userId: winnerUserId,
+//                 ludoUsername: winnerPlayer.ludoUsername,
+//                 amountWon: room.totalPrizePool,
+//                 netAmount: netWinning
+//             },
+//             status: 'finished',
+//             disputeStatus: 'resolved',
+//             gameEndedAt: new Date(),
+//             serviceCharge: serviceCharge,
+//             resultCheckedAt: new Date()
+//         });
 
-        // Update all win claims for this room
-        for (const dispute of disputes) {
-            if (dispute.claimedBy.toString() === winnerUserId) {
-                // Mark winner's dispute as verified
-                dispute.status = 'verified';
-                dispute.verifiedBy = req.user.id;
-                dispute.verifiedAt = new Date();
-                dispute.adminNotes = adminNotes || 'Verified as winner';
-            } else {
-                // Mark other disputes as rejected
-                dispute.status = 'rejected';
-                dispute.verifiedBy = req.user.id;
-                dispute.verifiedAt = new Date();
-                dispute.adminNotes = adminNotes || 'Not the winner';
-            }
-            await dispute.save();
-        }
+//         // Update all win claims for this room
+//         for (const dispute of disputes) {
+//             if (dispute.claimedBy.toString() === winnerUserId) {
+//                 // Mark winner's dispute as verified
+//                 dispute.status = 'verified';
+//                 dispute.verifiedBy = req.user.id;
+//                 dispute.verifiedAt = new Date();
+//                 dispute.adminNotes = adminNotes || 'Verified as winner';
+//             } else {
+//                 // Mark other disputes as rejected
+//                 dispute.status = 'rejected';
+//                 dispute.verifiedBy = req.user.id;
+//                 dispute.verifiedAt = new Date();
+//                 dispute.adminNotes = adminNotes || 'Not the winner';
+//             }
+//             await dispute.save();
+//         }
 
-        res.status(200).json({
-            success: true,
-            message: 'Dispute resolved successfully and money added to winner wallet',
-            data: {
-                roomId: roomId,
-                winner: {
-                    userId: winnerUserId,
-                    fullName: winnerPlayer.userId.fullName,
-                    ludoUsername: winnerPlayer.ludoUsername,
-                    amountWon: room.totalPrizePool,
-                    netAmount: netWinning
-                },
-                serviceCharge: serviceCharge,
-                status: 'finished'
-            }
-        });
+//         res.status(200).json({
+//             success: true,
+//             message: 'Dispute resolved successfully and money added to winner wallet',
+//             data: {
+//                 roomId: roomId,
+//                 winner: {
+//                     userId: winnerUserId,
+//                     fullName: winnerPlayer.userId.fullName,
+//                     ludoUsername: winnerPlayer.ludoUsername,
+//                     amountWon: room.totalPrizePool,
+//                     netAmount: netWinning
+//                 },
+//                 serviceCharge: serviceCharge,
+//                 status: 'finished'
+//             }
+//         });
 
-    } catch (error) {
-        console.error('Resolve dispute error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error'
-        });
-    }
-};
+//     } catch (error) {
+//         console.error('Resolve dispute error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Internal server error'
+//         });
+//     }
+// };
 
 // Admin adds funds to user's deposit wallet
 const addDepositFundsToUser = async (req, res) => {
@@ -813,6 +813,324 @@ const getAllUsers = async (req, res) => {
         });
     }
 };
+
+
+
+
+
+
+// Declare game winner
+const declareWinner = async (req, res) => {
+    try {
+        const { roomId, winnerUserId } = req.body;
+
+        if (!roomId || !winnerUserId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Room ID and winner user ID are required'
+            });
+        }
+
+        const room = await Room.findOne({ roomId }).populate('players.userId');
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        if (room.status !== 'live') {
+            return res.status(400).json({
+                success: false,
+                message: 'Room is not live. Cannot declare winner.'
+            });
+        }
+
+        if (room.winner) {
+            return res.status(400).json({
+                success: false,
+                message: 'Winner already declared for this room'
+            });
+        }
+
+        // Find winner in room players
+        const winnerPlayer = room.players.find(player =>
+            player.userId._id.toString() === winnerUserId
+        );
+
+        if (!winnerPlayer) {
+            return res.status(400).json({
+                success: false,
+                message: 'Winner must be one of the room players'
+            });
+        }
+
+        const totalPrizePool = room.totalPrizePool;
+        const netWinningForWinner = Math.floor(totalPrizePool * 0.95); // Winner always gets 95%
+
+        let adminServiceCharge = 0;
+        let referralBonusAmount = 0;
+        let referrerUser = null;
+
+        // Check if the winner was referred
+        if (winnerPlayer.userId.referredBy) {
+            referralBonusAmount = Math.floor(totalPrizePool * 0.02); // 2% for referrer
+            adminServiceCharge = totalPrizePool - netWinningForWinner - referralBonusAmount; // Remaining of the 5% for admin
+            referrerUser = await User.findOne({ referCode: winnerPlayer.userId.referredBy });
+        } else {
+            adminServiceCharge = totalPrizePool - netWinningForWinner; // All 5% for admin
+        }
+
+        // Update room with winner
+        await Room.findByIdAndUpdate(room._id, {
+            winner: {
+                userId: winnerPlayer.userId._id,
+                ludoUsername: winnerPlayer.ludoUsername,
+                amountWon: totalPrizePool, // Gross amount
+                netAmount: netWinningForWinner
+            },
+            status: 'finished',
+            gameEndedAt: new Date(),
+            serviceCharge: adminServiceCharge,
+            resultCheckedAt: new Date()
+        });
+
+        // Add winning amount to winner's wallet
+        const winnerWallet = await Wallet.findOne({ userId: winnerPlayer.userId._id });
+        if (winnerWallet) {
+            winnerWallet.winningBalance += netWinningForWinner;
+            winnerWallet.totalBalance += netWinningForWinner;
+            await winnerWallet.save();
+
+            // Create winning transaction
+            const winningTransaction = new Transaction({
+                userId: winnerPlayer.userId._id,
+                type: 'winning',
+                amount: netWinningForWinner,
+                status: 'success',
+                description: `Won room ${roomId} - ₹${netWinningForWinner} (after service charge)`,
+                walletType: 'winning'
+            });
+            await winningTransaction.save();
+        }
+
+        // Distribute referral bonus if applicable
+        if (referrerUser) {
+            const referrerWallet = await Wallet.findOne({ userId: referrerUser._id });
+            if (referrerWallet) {
+                referrerWallet.winningBalance += referralBonusAmount;
+                referrerWallet.totalBalance += referralBonusAmount;
+                await referrerWallet.save();
+
+                const referralTransaction = new Transaction({
+                    userId: referrerUser._id,
+                    type: 'referral',
+                    amount: referralBonusAmount,
+                    status: 'success',
+                    description: `Referral bonus for ${winnerPlayer.userId.fullName} winning room ${roomId}`,
+                    walletType: 'winning'
+                });
+                await referralTransaction.save();
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Winner declared successfully and money added to wallet',
+            data: {
+                roomId: room.roomId,
+                winner: {
+                    userId: winnerPlayer.userId._id,
+                    fullName: winnerPlayer.userId.fullName,
+                    ludoUsername: winnerPlayer.ludoUsername,
+                    amountWon: totalPrizePool,
+                    netAmount: netWinningForWinner
+                },
+                serviceCharge: adminServiceCharge,
+                status: 'finished'
+            }
+        });
+
+    } catch (error) {
+        console.error('Declare winner error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// Resolve room dispute
+const resolveDispute = async (req, res) => {
+    try {
+        const { roomId, winnerUserId, adminNotes } = req.body;
+
+        if (!roomId || !winnerUserId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Room ID and winner user ID are required'
+            });
+        }
+
+        const room = await Room.findOne({ roomId }).populate('players.userId');
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        if (room.disputeStatus !== 'disputed') {
+            return res.status(400).json({
+                success: false,
+                message: 'This room is not in dispute status'
+            });
+        }
+
+        // Find winner in room players
+        const winnerPlayer = room.players.find(player =>
+            player.userId._id.toString() === winnerUserId
+        );
+
+        if (!winnerPlayer) {
+            return res.status(400).json({
+                success: false,
+                message: 'Winner must be one of the room players'
+            });
+        }
+
+        // Get all win claims for this room
+        const disputes = await RoomDispute.find({
+            roomId: roomId,
+            claimType: 'win'
+        });
+
+        // Find winner's dispute
+        const winnerDispute = disputes.find(dispute =>
+            dispute.claimedBy.toString() === winnerUserId
+        );
+
+        if (!winnerDispute) {
+            return res.status(400).json({
+                success: false,
+                message: 'Selected winner must have claimed win for this room'
+            });
+        }
+
+        const totalPrizePool = room.totalPrizePool;
+        const netWinningForWinner = Math.floor(totalPrizePool * 0.95); // Winner always gets 95%
+
+        let adminServiceCharge = 0;
+        let referralBonusAmount = 0;
+        let referrerUser = null;
+
+        // Check if the winner was referred
+        if (winnerPlayer.userId.referredBy) {
+            referralBonusAmount = Math.floor(totalPrizePool * 0.02); // 2% for referrer
+            adminServiceCharge = totalPrizePool - netWinningForWinner - referralBonusAmount; // Remaining of the 5% for admin
+            referrerUser = await User.findOne({ referCode: winnerPlayer.userId.referredBy });
+        } else {
+            adminServiceCharge = totalPrizePool - netWinningForWinner; // All 5% for admin
+        }
+
+        // Add winning amount to winner's wallet
+        const winnerWallet = await Wallet.findOne({ userId: winnerUserId });
+        if (winnerWallet) {
+            winnerWallet.winningBalance += netWinningForWinner;
+            winnerWallet.totalBalance += netWinningForWinner;
+            await winnerWallet.save();
+
+            // Create winning transaction
+            const winningTransaction = new Transaction({
+                userId: winnerUserId,
+                type: 'winning',
+                amount: netWinningForWinner,
+                status: 'success',
+                description: `Won room ${roomId} (admin verified) - ₹${netWinningForWinner}`,
+                walletType: 'winning'
+            });
+            await winningTransaction.save();
+        }
+
+        // Distribute referral bonus if applicable
+        if (referrerUser) {
+            const referrerWallet = await Wallet.findOne({ userId: referrerUser._id });
+            if (referrerWallet) {
+                referrerWallet.winningBalance += referralBonusAmount;
+                referrerWallet.totalBalance += referralBonusAmount;
+                await referrerWallet.save();
+
+                const referralTransaction = new Transaction({
+                    userId: referrerUser._id,
+                    type: 'referral',
+                    amount: referralBonusAmount,
+                    status: 'success',
+                    description: `Referral bonus for ${winnerPlayer.userId.fullName} winning room ${roomId}`,
+                    walletType: 'winning'
+                });
+                await referralTransaction.save();
+            }
+        }
+
+        // Update room with final winner
+        await Room.findOneAndUpdate({ roomId: roomId }, {
+            winner: {
+                userId: winnerUserId,
+                ludoUsername: winnerPlayer.ludoUsername,
+                amountWon: totalPrizePool, // Gross amount
+                netAmount: netWinningForWinner
+            },
+            status: 'finished',
+            disputeStatus: 'resolved',
+            gameEndedAt: new Date(),
+            serviceCharge: adminServiceCharge,
+            resultCheckedAt: new Date()
+        });
+
+        // Update all win claims for this room
+        for (const dispute of disputes) {
+            if (dispute.claimedBy.toString() === winnerUserId) {
+                // Mark winner's dispute as verified
+                dispute.status = 'verified';
+                dispute.verifiedBy = req.user.id;
+                dispute.verifiedAt = new Date();
+                dispute.adminNotes = adminNotes || 'Verified as winner';
+            } else {
+                // Mark other disputes as rejected
+                dispute.status = 'rejected';
+                dispute.verifiedBy = req.user.id;
+                dispute.verifiedAt = new Date();
+                dispute.adminNotes = adminNotes || 'Not the winner';
+            }
+            await dispute.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Dispute resolved successfully and money added to winner wallet',
+            data: {
+                roomId: roomId,
+                winner: {
+                    userId: winnerUserId,
+                    fullName: winnerPlayer.userId.fullName,
+                    ludoUsername: winnerPlayer.ludoUsername,
+                    amountWon: totalPrizePool,
+                    netAmount: netWinningForWinner
+                },
+                serviceCharge: adminServiceCharge,
+                status: 'finished'
+            }
+        });
+
+    } catch (error) {
+        console.error('Resolve dispute error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
 
 module.exports = {
     getAllWithdrawals,
