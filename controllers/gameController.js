@@ -5,7 +5,7 @@ const Transaction = require('../models/Transaction');
 const RoomDispute = require('../models/RoomDispute');
 const fs = require('fs'); // Ensure fs is imported for file operations
 
-
+// .05
 // Create a new room
 const createRoom = async (req, res) => {
   try {
@@ -435,280 +435,280 @@ const checkRoomResultManual = async (req, res) => {
 };
 
 // Claim room result (win with screenshot or loss without screenshot)
-const claimRoomResult = async (req, res) => {
-  try {
-    const { roomId, ludoUsername, claimType } = req.fields;
-    const screenshot = req.files ? req.files.screenshot : null;
+// const claimRoomResult = async (req, res) => {
+//   try {
+//     const { roomId, ludoUsername, claimType } = req.fields;
+//     const screenshot = req.files ? req.files.screenshot : null;
 
-    if (!roomId || !ludoUsername || !claimType) {
-      return res.status(400).json({
-        success: false,
-        message: 'Room ID, Ludo username, and claim type are required'
-      });
-    }
+//     if (!roomId || !ludoUsername || !claimType) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Room ID, Ludo username, and claim type are required'
+//       });
+//     }
 
-    if (!['win', 'loss'].includes(claimType)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Claim type must be either "win" or "loss"'
-      });
-    }
+//     if (!['win', 'loss'].includes(claimType)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Claim type must be either "win" or "loss"'
+//       });
+//     }
 
-    if (claimType === 'win' && !screenshot) {
-      return res.status(400).json({
-        success: false,
-        message: 'Screenshot is required to claim win'
-      });
-    }
+//     if (claimType === 'win' && !screenshot) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Screenshot is required to claim win'
+//       });
+//     }
 
-    const room = await Room.findOne({ roomId }).populate('players.userId');
-    if (!room) {
-      return res.status(404).json({
-        success: false,
-        message: 'Room not found'
-      });
-    }
+//     const room = await Room.findOne({ roomId }).populate('players.userId');
+//     if (!room) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Room not found'
+//       });
+//     }
 
-    // If room is already finished or resolved, no more claims
-    if (room.status === 'finished' || room.disputeStatus === 'resolved') {
-      return res.status(400).json({
-        success: false,
-        message: 'Game is already finished or resolved. Cannot claim result.'
-      });
-    }
-    // If room is 'pending' (waiting for second player to join), cannot claim result yet.
-    if (room.status === 'pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Game has not started yet. Cannot claim result.'
-      });
-    }
+//     // If room is already finished or resolved, no more claims
+//     if (room.status === 'finished' || room.disputeStatus === 'resolved') {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Game is already finished or resolved. Cannot claim result.'
+//       });
+//     }
+//     // If room is 'pending' (waiting for second player to join), cannot claim result yet.
+//     if (room.status === 'pending') {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Game has not started yet. Cannot claim result.'
+//       });
+//     }
 
-    // Check if user is in the room
-    const isPlayer = room.players.some(player =>
-      player.userId._id.toString() === req.user.id
-    );
-    if (!isPlayer) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not a player in this room'
-      });
-    }
+//     // Check if user is in the room
+//     const isPlayer = room.players.some(player =>
+//       player.userId._id.toString() === req.user.id
+//     );
+//     if (!isPlayer) {
+//       return res.status(403).json({
+//         success: false,
+//         message: 'You are not a player in this room'
+//       });
+//     }
 
-    // Check if user already claimed for this room
-    const existingClaim = await RoomDispute.findOne({
-      roomId: roomId,
-      claimedBy: req.user.id
-    });
-    if (existingClaim) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already made a claim for this room'
-      });
-    }
+//     // Check if user already claimed for this room
+//     const existingClaim = await RoomDispute.findOne({
+//       roomId: roomId,
+//       claimedBy: req.user.id
+//     });
+//     if (existingClaim) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'You have already made a claim for this room'
+//       });
+//     }
 
-    // Create claim record
-    const claimData = {
-      roomId: roomId,
-      claimedBy: req.user.id,
-      claimType: claimType,
-      ludoUsername: ludoUsername,
-    };
+//     // Create claim record
+//     const claimData = {
+//       roomId: roomId,
+//       claimedBy: req.user.id,
+//       claimType: claimType,
+//       ludoUsername: ludoUsername,
+//     };
 
-    // Add screenshot only for win claims
-    if (claimType === 'win' && screenshot) {
-      const screenshotBuffer = fs.readFileSync(screenshot.path);
+//     // Add screenshot only for win claims
+//     if (claimType === 'win' && screenshot) {
+//       const screenshotBuffer = fs.readFileSync(screenshot.path);
 
-      claimData.screenshot = {
-        data: screenshotBuffer,
-        contentType: screenshot.type
-      };
+//       claimData.screenshot = {
+//         data: screenshotBuffer,
+//         contentType: screenshot.type
+//       };
 
-      // Clean up temporary file
-      fs.unlinkSync(screenshot.path);
-    }
+//       // Clean up temporary file
+//       fs.unlinkSync(screenshot.path);
+//     }
 
-    const newClaim = new RoomDispute(claimData);
-    await newClaim.save();
+//     const newClaim = new RoomDispute(claimData);
+//     await newClaim.save();
 
-    // Get all claims for this room (including the newly created one)
-    const allClaims = await RoomDispute.find({ roomId: roomId });
-    const winClaims = allClaims.filter(claim => claim.claimType === 'win');
-    const lossClaims = allClaims.filter(claim => claim.claimType === 'loss');
+//     // Get all claims for this room (including the newly created one)
+//     const allClaims = await RoomDispute.find({ roomId: roomId });
+//     const winClaims = allClaims.filter(claim => claim.claimType === 'win');
+//     const lossClaims = allClaims.filter(claim => claim.claimType === 'loss');
 
-    let message = '';
+//     let message = '';
 
-    // Scenario 1: This is the first claim for the room
-    if (allClaims.length === 1) {
-      if (claimType === 'loss') {
-        // Current user claims loss, so the other player is the winner
-        const otherPlayer = room.players.find(player =>
-          player.userId._id.toString() !== req.user.id
-        );
+//     // Scenario 1: This is the first claim for the room
+//     if (allClaims.length === 1) {
+//       if (claimType === 'loss') {
+//         // Current user claims loss, so the other player is the winner
+//         const otherPlayer = room.players.find(player =>
+//           player.userId._id.toString() !== req.user.id
+//         );
 
-        if (otherPlayer) {
-          const serviceCharge = Math.floor(room.betAmount * 2 * 0.03);
-          const netWinning = (room.betAmount * 2) - serviceCharge;
+//         if (otherPlayer) {
+//           const serviceCharge = Math.floor(room.betAmount * 2 * 0.05); // Changed from 0.03 to 0.05
+//           const netWinning = (room.betAmount * 2) - serviceCharge;
 
-          const winnerWallet = await Wallet.findOne({ userId: otherPlayer.userId._id });
-          if (winnerWallet) {
-            winnerWallet.winningBalance += netWinning;
-            winnerWallet.totalBalance += netWinning;
-            await winnerWallet.save();
+//           const winnerWallet = await Wallet.findOne({ userId: otherPlayer.userId._id });
+//           if (winnerWallet) {
+//             winnerWallet.winningBalance += netWinning;
+//             winnerWallet.totalBalance += netWinning;
+//             await winnerWallet.save();
 
-            const winningTransaction = new Transaction({
-              userId: otherPlayer.userId._id,
-              type: 'winning',
-              amount: netWinning,
-              status: 'success',
-              description: `Won room ${roomId} - ₹${netWinning} (opponent accepted loss)`,
-              walletType: 'winning'
-            });
-            await winningTransaction.save();
-          }
+//             const winningTransaction = new Transaction({
+//               userId: otherPlayer.userId._id,
+//               type: 'winning',
+//               amount: netWinning,
+//               status: 'success',
+//               description: `Won room ${roomId} - ₹${netWinning} (opponent accepted loss)`,
+//               walletType: 'winning'
+//             });
+//             await winningTransaction.save();
+//           }
 
-          room.winner = {
-            userId: otherPlayer.userId._id,
-            ludoUsername: otherPlayer.ludoUsername,
-            amountWon: room.betAmount * 2,
-            netAmount: netWinning
-          };
-          room.serviceCharge = serviceCharge;
-          room.status = 'finished'; // Game is definitively finished
-          room.disputeStatus = 'resolved';
-          room.gameEndedAt = new Date();
+//           room.winner = {
+//             userId: otherPlayer.userId._id,
+//             ludoUsername: otherPlayer.ludoUsername,
+//             amountWon: room.betAmount * 2,
+//             netAmount: netWinning
+//           };
+//           room.serviceCharge = serviceCharge;
+//           room.status = 'finished'; // Game is definitively finished
+//           room.disputeStatus = 'resolved';
+//           room.gameEndedAt = new Date();
 
-          // Mark current user's claim as rejected
-          await RoomDispute.updateOne(
-            { _id: newClaim._id }, // The newly created claim by the current user
-            { status: 'rejected', verifiedAt: new Date(), adminNotes: 'Claimed loss, opponent wins.' }
-          );
+//           // Mark current user's claim as rejected
+//           await RoomDispute.updateOne(
+//             { _id: newClaim._id }, // The newly created claim by the current user
+//             { status: 'rejected', verifiedAt: new Date(), adminNotes: 'Claimed loss, opponent wins.' }
+//           );
 
-          message = 'You claimed loss. Opponent automatically wins and game is finished.';
-        } else {
-          // This case should ideally not be reached if there are always two players in a 'live' room
-          message = 'Claim submitted as loss. Waiting for opponent to claim win.';
-          room.disputeStatus = 'single_claim';
-          room.disputeCount = 1;
-          room.status = 'ended'; // Game is ended, awaiting opponent's claim
-        }
-      } else { // claimType === 'win'
-        // First player claims win, room status remains live to allow opponent to claim
-        room.disputeStatus = 'single_claim';
-        room.disputeCount = 1;
-        room.status = 'live'; // Keep as live to allow opponent to claim
-        message = 'Win claimed successfully. Waiting for opponent\'s response.';
-      }
-    }
-    // Scenario 2: This is the second claim for the room
-    else if (allClaims.length === 2) {
-      // Sub-case A: One win, one loss (clear winner)
-      if (winClaims.length === 1 && lossClaims.length === 1) {
-        const winnerClaim = winClaims[0];
-        const loserClaim = lossClaims[0];
+//           message = 'You claimed loss. Opponent automatically wins and game is finished.';
+//         } else {
+//           // This case should ideally not be reached if there are always two players in a 'live' room
+//           message = 'Claim submitted as loss. Waiting for opponent to claim win.';
+//           room.disputeStatus = 'single_claim';
+//           room.disputeCount = 1;
+//           room.status = 'ended'; // Game is ended, awaiting opponent's claim
+//         }
+//       } else { // claimType === 'win'
+//         // First player claims win, room status remains live to allow opponent to claim
+//         room.disputeStatus = 'single_claim';
+//         room.disputeCount = 1;
+//         room.status = 'live'; // Keep as live to allow opponent to claim
+//         message = 'Win claimed successfully. Waiting for opponent\'s response.';
+//       }
+//     }
+//     // Scenario 2: This is the second claim for the room
+//     else if (allClaims.length === 2) {
+//       // Sub-case A: One win, one loss (clear winner)
+//       if (winClaims.length === 1 && lossClaims.length === 1) {
+//         const winnerClaim = winClaims[0];
+//         const loserClaim = lossClaims[0];
 
-        const winnerPlayer = room.players.find(player =>
-          player.userId._id.toString() === winnerClaim.claimedBy.toString()
-        );
+//         const winnerPlayer = room.players.find(player =>
+//           player.userId._id.toString() === winnerClaim.claimedBy.toString()
+//         );
 
-        if (winnerPlayer) {
-          const serviceCharge = Math.floor(room.betAmount * 2 * 0.03);
-          const netWinning = (room.betAmount * 2) - serviceCharge;
+//         if (winnerPlayer) {
+//           const serviceCharge = Math.floor(room.betAmount * 2 * 0.05); // Changed from 0.03 to 0.05
+//           const netWinning = (room.betAmount * 2) - serviceCharge;
 
-          const winnerWallet = await Wallet.findOne({ userId: winnerClaim.claimedBy });
-          if (winnerWallet) {
-            winnerWallet.winningBalance += netWinning;
-            winnerWallet.totalBalance += netWinning;
-            await winnerWallet.save();
+//           const winnerWallet = await Wallet.findOne({ userId: winnerClaim.claimedBy });
+//           if (winnerWallet) {
+//             winnerWallet.winningBalance += netWinning;
+//             winnerWallet.totalBalance += netWinning;
+//             await winnerWallet.save();
 
-            const winningTransaction = new Transaction({
-              userId: winnerClaim.claimedBy,
-              type: 'winning',
-              amount: netWinning,
-              status: 'success',
-              description: `Won room ${roomId} - ₹${netWinning} (opponent accepted loss)`,
-              walletType: 'winning'
-            });
-            await winningTransaction.save();
-          }
+//             const winningTransaction = new Transaction({
+//               userId: winnerClaim.claimedBy,
+//               type: 'winning',
+//               amount: netWinning,
+//               status: 'success',
+//               description: `Won room ${roomId} - ₹${netWinning} (opponent accepted loss)`,
+//               walletType: 'winning'
+//             });
+//             await winningTransaction.save();
+//           }
 
-          room.winner = {
-            userId: winnerClaim.claimedBy,
-            ludoUsername: winnerPlayer.ludoUsername,
-            amountWon: room.betAmount * 2,
-            netAmount: netWinning
-          };
-          room.serviceCharge = serviceCharge;
-          room.status = 'finished'; // Game is definitively finished
-          room.disputeStatus = 'resolved';
-          room.gameEndedAt = new Date();
+//           room.winner = {
+//             userId: winnerClaim.claimedBy,
+//             ludoUsername: winnerPlayer.ludoUsername,
+//             amountWon: room.betAmount * 2,
+//             netAmount: netWinning
+//           };
+//           room.serviceCharge = serviceCharge;
+//           room.status = 'finished'; // Game is definitively finished
+//           room.disputeStatus = 'resolved';
+//           room.gameEndedAt = new Date();
 
-          // Update claims statuses
-          await RoomDispute.updateOne(
-            { _id: winnerClaim._id },
-            { status: 'verified', verifiedAt: new Date() }
-          );
-          await RoomDispute.updateOne(
-            { _id: loserClaim._id },
-            { status: 'rejected', verifiedAt: new Date() }
-          );
+//           // Update claims statuses
+//           await RoomDispute.updateOne(
+//             { _id: winnerClaim._id },
+//             { status: 'verified', verifiedAt: new Date() }
+//           );
+//           await RoomDispute.updateOne(
+//             { _id: loserClaim._id },
+//             { status: 'rejected', verifiedAt: new Date() }
+//           );
 
-          message = 'Game completed! Winner decided without dispute.';
-        }
-      }
-      // Sub-case B: Both claimed win (dispute situation)
-      else if (winClaims.length === 2) {
-        room.disputeStatus = 'disputed';
-        room.disputeCount = 2;
-        room.status = 'ended'; // Game is ended, but contested, awaiting admin resolution
-        room.winner = null; // Clear any temporary winner
-        room.tempWinnerRefunded = false; // No temporary winner to refund with this new logic
+//           message = 'Game completed! Winner decided without dispute.';
+//         }
+//       }
+//       // Sub-case B: Both claimed win (dispute situation)
+//       else if (winClaims.length === 2) {
+//         room.disputeStatus = 'disputed';
+//         room.disputeCount = 2;
+//         room.status = 'ended'; // Game is ended, but contested, awaiting admin resolution
+//         room.winner = null; // Clear any temporary winner
+//         room.tempWinnerRefunded = false; // No temporary winner to refund with this new logic
 
-        message = 'Both players claimed win. Admin will verify and decide the winner.';
-      }
-      // Sub-case C: Both claimed loss (no winner)
-      else if (lossClaims.length === 2) {
-        room.status = 'finished'; // Game is definitively finished
-        room.disputeStatus = 'resolved';
-        room.gameEndedAt = new Date();
-        room.winner = null; // No winner if both claim loss
+//         message = 'Both players claimed win. Admin will verify and decide the winner.';
+//       }
+//       // Sub-case C: Both claimed loss (no winner)
+//       else if (lossClaims.length === 2) {
+//         room.status = 'finished'; // Game is definitively finished
+//         room.disputeStatus = 'resolved';
+//         room.gameEndedAt = new Date();
+//         room.winner = null; // No winner if both claim loss
 
-        // Mark both claims as rejected
-        await RoomDispute.updateMany(
-          { roomId: roomId },
-          { status: 'rejected', verifiedAt: new Date(), adminNotes: 'Both players claimed loss.' }
-        );
+//         // Mark both claims as rejected
+//         await RoomDispute.updateMany(
+//           { roomId: roomId },
+//           { status: 'rejected', verifiedAt: new Date(), adminNotes: 'Both players claimed loss.' }
+//         );
 
-        message = 'Both players claimed loss. Game finished with no winner.';
-      }
-    }
-    // Default message if none of the above specific cases are met (should not happen with 2 players)
-    else {
-      message = 'Claim submitted successfully. Awaiting opponent\'s response or admin review.';
-    }
+//         message = 'Both players claimed loss. Game finished with no winner.';
+//       }
+//     }
+//     // Default message if none of the above specific cases are met (should not happen with 2 players)
+//     else {
+//       message = 'Claim submitted successfully. Awaiting opponent\'s response or admin review.';
+//     }
 
-    await room.save();
+//     await room.save();
 
-    res.status(200).json({
-      success: true,
-      message: message,
-      data: {
-        roomId: roomId,
-        disputeStatus: room.disputeStatus,
-        disputeCount: room.disputeCount,
-        claimType: claimType,
-        roomStatus: room.status // Include current room status in response
-      }
-    });
+//     res.status(200).json({
+//       success: true,
+//       message: message,
+//       data: {
+//         roomId: roomId,
+//         disputeStatus: room.disputeStatus,
+//         disputeCount: room.disputeCount,
+//         claimType: claimType,
+//         roomStatus: room.status // Include current room status in response
+//       }
+//     });
 
-  } catch (error) {
-    console.error('Claim room result error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
-};
+//   } catch (error) {
+//     console.error('Claim room result error:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Internal server error'
+//     });
+//   }
+// };
 
 
 // Handle join requests (approve/reject)
@@ -1000,6 +1000,350 @@ const cancelRoom = async (req, res) => {
 
   } catch (error) {
     console.error('Cancel room error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+
+
+// Claim room result (win with screenshot or loss without screenshot)
+const claimRoomResult = async (req, res) => {
+  try {
+    const { roomId, ludoUsername, claimType } = req.fields;
+    const screenshot = req.files ? req.files.screenshot : null;
+
+    if (!roomId || !ludoUsername || !claimType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Room ID, Ludo username, and claim type are required'
+      });
+    }
+
+    if (!['win', 'loss'].includes(claimType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Claim type must be either "win" or "loss"'
+      });
+    }
+
+    if (claimType === 'win' && !screenshot) {
+      return res.status(400).json({
+        success: false,
+        message: 'Screenshot is required to claim win'
+      });
+    }
+
+    const room = await Room.findOne({ roomId }).populate('players.userId');
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    // If room is already finished or resolved, no more claims
+    if (room.status === 'finished' || room.disputeStatus === 'resolved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Game is already finished or resolved. Cannot claim result.'
+      });
+    }
+    // If room is 'pending' (waiting for second player to join), cannot claim result yet.
+    if (room.status === 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Game has not started yet. Cannot claim result.'
+      });
+    }
+
+    // Check if user is in the room
+    const isPlayer = room.players.some(player =>
+      player.userId._id.toString() === req.user.id
+    );
+    if (!isPlayer) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not a player in this room'
+      });
+    }
+
+    // Check if user already claimed for this room
+    const existingClaim = await RoomDispute.findOne({
+      roomId: roomId,
+      claimedBy: req.user.id
+    });
+    if (existingClaim) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already made a claim for this room'
+      });
+    }
+
+    // Create claim record
+    const claimData = {
+      roomId: roomId,
+      claimedBy: req.user.id,
+      claimType: claimType,
+      ludoUsername: ludoUsername,
+    };
+
+    // Add screenshot only for win claims
+    if (claimType === 'win' && screenshot) {
+      const screenshotBuffer = fs.readFileSync(screenshot.path);
+
+      claimData.screenshot = {
+        data: screenshotBuffer,
+        contentType: screenshot.type
+      };
+
+      // Clean up temporary file
+      fs.unlinkSync(screenshot.path);
+    }
+
+    const newClaim = new RoomDispute(claimData);
+    await newClaim.save();
+
+    // Get all claims for this room (including the newly created one)
+    const allClaims = await RoomDispute.find({ roomId: roomId });
+    const winClaims = allClaims.filter(claim => claim.claimType === 'win');
+    const lossClaims = allClaims.filter(claim => claim.claimType === 'loss');
+
+    let message = '';
+
+    // Scenario 1: This is the first claim for the room
+    if (allClaims.length === 1) {
+      if (claimType === 'loss') {
+        // Current user claims loss, so the other player is the winner
+        const otherPlayer = room.players.find(player =>
+          player.userId._id.toString() !== req.user.id
+        );
+
+        if (otherPlayer) {
+          const totalPrizePool = room.betAmount * 2;
+          const netWinningForWinner = Math.floor(totalPrizePool * 0.95); // Winner always gets 95%
+
+          let adminServiceCharge = 0;
+          let referralBonusAmount = 0;
+          let referrerUser = null;
+
+          // Check if the winner was referred
+          if (otherPlayer.userId.referredBy) {
+            referralBonusAmount = Math.floor(totalPrizePool * 0.02); // 2% for referrer
+            adminServiceCharge = totalPrizePool - netWinningForWinner - referralBonusAmount; // Remaining of the 5% for admin
+            referrerUser = await User.findOne({ referCode: otherPlayer.userId.referredBy });
+          } else {
+            adminServiceCharge = totalPrizePool - netWinningForWinner; // All 5% for admin
+          }
+
+          const winnerWallet = await Wallet.findOne({ userId: otherPlayer.userId._id });
+          if (winnerWallet) {
+            winnerWallet.winningBalance += netWinningForWinner;
+            winnerWallet.totalBalance += netWinningForWinner;
+            await winnerWallet.save();
+
+            const winningTransaction = new Transaction({
+              userId: otherPlayer.userId._id,
+              type: 'winning',
+              amount: netWinningForWinner,
+              status: 'success',
+              description: `Won room ${roomId} - ₹${netWinningForWinner} (opponent accepted loss, after service charge)`,
+              walletType: 'winning'
+            });
+            await winningTransaction.save();
+          }
+
+          // Distribute referral bonus if applicable
+          if (referrerUser) {
+            const referrerWallet = await Wallet.findOne({ userId: referrerUser._id });
+            if (referrerWallet) {
+              referrerWallet.winningBalance += referralBonusAmount;
+              referrerWallet.totalBalance += referralBonusAmount;
+              await referrerWallet.save();
+
+              const referralTransaction = new Transaction({
+                userId: referrerUser._id,
+                type: 'referral',
+                amount: referralBonusAmount,
+                status: 'success',
+                description: `Referral bonus for ${otherPlayer.userId.fullName} winning room ${roomId}`,
+                walletType: 'winning'
+              });
+              await referralTransaction.save();
+            }
+          }
+
+          room.winner = {
+            userId: otherPlayer.userId._id,
+            ludoUsername: otherPlayer.ludoUsername,
+            amountWon: totalPrizePool, // Gross amount
+            netAmount: netWinningForWinner
+          };
+          room.serviceCharge = adminServiceCharge;
+          room.status = 'finished'; // Game is definitively finished
+          room.disputeStatus = 'resolved';
+          room.gameEndedAt = new Date();
+
+          // Mark current user's claim as rejected
+          await RoomDispute.updateOne(
+            { _id: newClaim._id }, // The newly created claim by the current user
+            { status: 'rejected', verifiedAt: new Date(), adminNotes: 'Claimed loss, opponent wins.' }
+          );
+
+          message = 'You claimed loss. Opponent automatically wins and game is finished.';
+        } else {
+          // This case should ideally not be reached if there are always two players in a 'live' room
+          message = 'Claim submitted as loss. Waiting for opponent to claim win.';
+          room.disputeStatus = 'single_claim';
+          room.disputeCount = 1;
+          room.status = 'ended'; // Game is ended, awaiting opponent's claim
+        }
+      } else { // claimType === 'win'
+        // First player claims win, room status remains live to allow opponent to claim
+        room.disputeStatus = 'single_claim';
+        room.disputeCount = 1;
+        room.status = 'live'; // Keep as live to allow opponent to claim
+        message = 'Win claimed successfully. Waiting for opponent\'s response.';
+      }
+    }
+    // Scenario 2: This is the second claim for the room
+    else if (allClaims.length === 2) {
+      // Sub-case A: One win, one loss (clear winner)
+      if (winClaims.length === 1 && lossClaims.length === 1) {
+        const winnerClaim = winClaims[0];
+        const loserClaim = lossClaims[0];
+
+        const winnerPlayer = room.players.find(player =>
+          player.userId._id.toString() === winnerClaim.claimedBy.toString()
+        );
+
+        if (winnerPlayer) {
+          const totalPrizePool = room.betAmount * 2;
+          const netWinningForWinner = Math.floor(totalPrizePool * 0.95); // Winner always gets 95%
+
+          let adminServiceCharge = 0;
+          let referralBonusAmount = 0;
+          let referrerUser = null;
+
+          // Check if the winner was referred
+          if (winnerPlayer.userId.referredBy) {
+            referralBonusAmount = Math.floor(totalPrizePool * 0.02); // 2% for referrer
+            adminServiceCharge = totalPrizePool - netWinningForWinner - referralBonusAmount; // Remaining of the 5% for admin
+            referrerUser = await User.findOne({ referCode: winnerPlayer.userId.referredBy });
+          } else {
+            adminServiceCharge = totalPrizePool - netWinningForWinner; // All 5% for admin
+          }
+
+          const winnerWallet = await Wallet.findOne({ userId: winnerClaim.claimedBy });
+          if (winnerWallet) {
+            winnerWallet.winningBalance += netWinningForWinner;
+            winnerWallet.totalBalance += netWinningForWinner;
+            await winnerWallet.save();
+
+            const winningTransaction = new Transaction({
+              userId: winnerClaim.claimedBy,
+              type: 'winning',
+              amount: netWinningForWinner,
+              status: 'success',
+              description: `Won room ${roomId} - ₹${netWinningForWinner} (opponent accepted loss, after service charge)`,
+              walletType: 'winning'
+            });
+            await winningTransaction.save();
+          }
+
+          // Distribute referral bonus if applicable
+          if (referrerUser) {
+            const referrerWallet = await Wallet.findOne({ userId: referrerUser._id });
+            if (referrerWallet) {
+              referrerWallet.winningBalance += referralBonusAmount;
+              referrerWallet.totalBalance += referralBonusAmount;
+              await referrerWallet.save();
+
+              const referralTransaction = new Transaction({
+                userId: referrerUser._id,
+                type: 'referral',
+                amount: referralBonusAmount,
+                status: 'success',
+                description: `Referral bonus for ${winnerPlayer.userId.fullName} winning room ${roomId}`,
+                walletType: 'winning'
+              });
+              await referralTransaction.save();
+            }
+          }
+
+          room.winner = {
+            userId: winnerClaim.claimedBy,
+            ludoUsername: winnerPlayer.ludoUsername,
+            amountWon: totalPrizePool, // Gross amount
+            netAmount: netWinningForWinner
+          };
+          room.serviceCharge = adminServiceCharge;
+          room.status = 'finished'; // Game is definitively finished
+          room.disputeStatus = 'resolved';
+          room.gameEndedAt = new Date();
+
+          // Update claims statuses
+          await RoomDispute.updateOne(
+            { _id: winnerClaim._id },
+            { status: 'verified', verifiedAt: new Date() }
+          );
+          await RoomDispute.updateOne(
+            { _id: loserClaim._id },
+            { status: 'rejected', verifiedAt: new Date() }
+          );
+
+          message = 'Game completed! Winner decided without dispute.';
+        }
+      }
+      // Sub-case B: Both claimed win (dispute situation)
+      else if (winClaims.length === 2) {
+        room.disputeStatus = 'disputed';
+        room.disputeCount = 2;
+        room.status = 'ended'; // Game is ended, but contested, awaiting admin resolution
+        room.winner = null; // Clear any temporary winner
+        room.tempWinnerRefunded = false; // No temporary winner to refund with this new logic
+
+        message = 'Both players claimed win. Admin will verify and decide the winner.';
+      }
+      // Sub-case C: Both claimed loss (no winner)
+      else if (lossClaims.length === 2) {
+        room.status = 'finished'; // Game is definitively finished
+        room.disputeStatus = 'resolved';
+        room.gameEndedAt = new Date();
+        room.winner = null; // No winner if both claim loss
+
+        // Mark both claims as rejected
+        await RoomDispute.updateMany(
+          { roomId: roomId },
+          { status: 'rejected', verifiedAt: new Date(), adminNotes: 'Both players claimed loss.' }
+        );
+
+        message = 'Both players claimed loss. Game finished with no winner.';
+      }
+    }
+    // Default message if none of the above specific cases are met (should not happen with 2 players)
+    else {
+      message = 'Claim submitted successfully. Awaiting opponent\'s response or admin review.';
+    }
+
+    await room.save();
+
+    res.status(200).json({
+      success: true,
+      message: message,
+      data: {
+        roomId: roomId,
+        disputeStatus: room.disputeStatus,
+        disputeCount: room.disputeCount,
+        claimType: claimType,
+        roomStatus: room.status // Include current room status in response
+      }
+    });
+
+  } catch (error) {
+    console.error('Claim room result error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
