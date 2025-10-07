@@ -729,6 +729,91 @@ const resolveDispute = async (req, res) => {
     }
 };
 
+// Admin adds funds to user's deposit wallet
+const addDepositFundsToUser = async (req, res) => {
+    try {
+        const { userId, amount } = req.body;
+
+        if (!userId || !amount || amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID and a positive amount are required'
+            });
+        }
+
+        // Find the user
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Find the user's wallet
+        const wallet = await Wallet.findOne({ userId });
+        if (!wallet) {
+            return res.status(404).json({
+                success: false,
+                message: 'Wallet not found for this user'
+            });
+        }
+
+        // Update wallet balances
+        wallet.depositBalance += amount;
+        wallet.totalBalance += amount;
+        await wallet.save();
+
+        // Create a transaction record for the manual deposit
+        const transaction = new Transaction({
+            userId: userId,
+            type: 'deposit',
+            amount: amount,
+            status: 'success',
+            description: `Admin manual deposit of ₹${amount}`,
+            walletType: 'deposit'
+        });
+        await transaction.save();
+
+        res.status(200).json({
+            success: true,
+            message: `₹${amount} successfully added to ${user.fullName}'s deposit wallet.`,
+            data: {
+                userId: user._id,
+                newDepositBalance: wallet.depositBalance,
+                newTotalBalance: wallet.totalBalance
+            }
+        });
+    } catch (error) {
+        console.error('Admin add deposit funds error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// Get all users with selected fields
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find({})
+            .select('fullName username mobileNumber') // Select only these fields
+            .sort({ createdAt: -1 }); // Optional: sort by creation date
+
+        res.status(200).json({
+            success: true,
+            data: users
+        });
+
+    } catch (error) {
+        console.error('Get all users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
 module.exports = {
     getAllWithdrawals,
     updateWithdrawalStatus,
@@ -739,5 +824,7 @@ module.exports = {
     declareWinner,
     getAllDisputes,
     getDisputeScreenshot,
-    resolveDispute
+    resolveDispute,
+    addDepositFundsToUser,
+    getAllUsers // Export the new function
 };
