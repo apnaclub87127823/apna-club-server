@@ -4,7 +4,7 @@ const roomSchema = new mongoose.Schema({
   roomId: {
     type: String,
     unique: true,
-    // required: true // This was commented out in your original file, keeping it as is.
+    // required: true
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -29,6 +29,10 @@ const roomSchema = new mongoose.Schema({
     joinedAt: {
       type: Date,
       default: Date.now
+    },
+    cancelRequested: { // NEW FIELD: To track if this player has requested cancellation
+      type: Boolean,
+      default: false
     }
   }],
   betAmount: {
