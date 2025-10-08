@@ -4,13 +4,14 @@ const {
   joinRoom,
   getRoomCode,
   getUserRooms,
+  getUserFinishedGames,
   getAllRooms,
   checkRoomResultManual,
   claimRoomResult,
   handleJoinRequest,
   getPendingRequests,
-  getUserFinishedGames,
-  cancelRoom // Import the new function
+  cancelRoom,
+  requestMutualRoomCancellation // NEW IMPORT
 } = require('../controllers/gameController');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -47,7 +48,10 @@ router.post('/handle-join-request', auth, handleJoinRequest);
 // GET /api/game/pending-requests - Get pending join requests for room creator
 router.get('/pending-requests', auth, getPendingRequests);
 
-// DELETE /api/game/cancel-room/:roomId - Cancel a room
-router.delete('/cancel-room/:roomId', auth, cancelRoom); // New route
+// DELETE /api/game/cancel-room/:roomId - Cancel a room (existing logic)
+router.delete('/cancel-room/:roomId', auth, cancelRoom);
+
+// POST /api/game/request-mutual-cancellation - Request mutual cancellation of a room (NEW ROUTE)
+router.post('/request-mutual-cancellation', auth, requestMutualRoomCancellation);
 
 module.exports = router;
