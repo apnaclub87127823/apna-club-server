@@ -1173,6 +1173,117 @@ const cancelRoom = async (req, res) => {
   }
 };
 
+
+
+// New function to request mutual room cancellation
+const requestMutualRoomCancellation = async (req, res) => {
+  try {
+    const { roomId } = req.body;
+
+    if (!roomId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Room ID is required'
+      });
+    }
+
+    const room = await Room.findOne({ roomId }).populate('players.userId');
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    // Check if the authenticated user is a player in the room
+    const playerIndex = room.players.findIndex(player =>
+      player.userId._id.toString() === req.user.id
+    );
+    if (playerIndex === -1) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not a player in this room.'
+      });
+    }
+
+    // Only allow mutual cancellation for 'live' rooms
+    if (room.status !== 'live') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot request mutual cancellation. Room status is '${room.status}'. Only 'live' rooms can be mutually cancelled.`
+      });
+    }
+
+    // Mark the current user's cancellation request
+    if (room.players[playerIndex].cancelRequested) {
+      return res.status(200).json({
+        success: true,
+        message: 'You have already requested cancellation. Waiting for the other player.',
+        data: { roomId: room.roomId }
+      });
+    }
+
+    room.players[playerIndex].cancelRequested = true;
+    await room.save();
+
+    // Check if all players have requested cancellation
+    const allPlayersRequestedCancel = room.players.every(player => player.cancelRequested);
+
+    if (allPlayersRequestedCancel) {
+      // Both players have requested cancellation, proceed with refund and deletion
+      const refundedPlayers = [];
+      for (const player of room.players) {
+        const playerWallet = await Wallet.findOne({ userId: player.userId._id });
+        if (playerWallet) {
+          playerWallet.depositBalance += room.betAmount;
+          playerWallet.totalBalance += room.betAmount;
+          await playerWallet.save();
+
+          const refundDescription = `Refund for mutually cancelled room ${roomId}.`;
+          const refundTransaction = new Transaction({
+            userId: player.userId._id,
+            type: 'deposit',
+            amount: room.betAmount,
+            status: 'success',
+            description: refundDescription,
+            walletType: 'deposit'
+          });
+          await refundTransaction.save();
+          refundedPlayers.push({ userId: player.userId._id, amount: room.betAmount });
+        } else {
+          console.warn(`Wallet not found for user ${player.userId._id} during mutual room cancellation refund.`);
+        }
+      }
+
+      // Delete the room
+      await Room.deleteOne({ roomId });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Room mutually cancelled successfully and bet amounts refunded to all players.',
+        data: {
+          roomId: room.roomId,
+          refundedPlayers: refundedPlayers
+        }
+      });
+    } else {
+      // Only one player has requested cancellation so far
+      return res.status(200).json({
+        success: true,
+        message: 'Cancellation request sent. Waiting for the other player to confirm.',
+        data: { roomId: room.roomId }
+      });
+    }
+
+  } catch (error) {
+    console.error('Request mutual room cancellation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   createRoom,
   joinRoom,
@@ -1184,6 +1295,7 @@ module.exports = {
   handleJoinRequest,
   getPendingRequests,
   getUserFinishedGames,
-  cancelRoom
+  cancelRoom,
+  requestMutualRoomCancellation
 };
 
