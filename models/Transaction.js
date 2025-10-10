@@ -8,7 +8,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['deposit', 'withdraw', 'winning', 'penalty', 'referral'],
+    enum: ['deposit', 'withdraw', 'winning', 'penalty', 'referral', 'Room Cancellation Refund', 'Room Create', 'Room Deletion Refund'],
     required: true
   },
   amount: {
@@ -17,7 +17,7 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'success', 'failed'],
+    enum: ['pending', 'success', 'failed', 'cancelled'],
     default: 'pending'
   },
   description: {

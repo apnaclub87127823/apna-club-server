@@ -30,31 +30,56 @@ const createRoom = async (req, res) => {
     if (!wallet || wallet.totalBalance < betAmount) {
       return res.status(400).json({
         success: false,
-        message: 'Insufficient balance to create room'
+        message: `Insufficient balance. Required: ₹${betAmount}, Available: ₹${wallet ? wallet.totalBalance : 0}`
       });
     }
 
-    // Deduct bet amount from user's wallet
-    wallet.depositBalance -= betAmount;
+    // Calculate how much to deduct from each wallet
+    const amountFromDeposit = Math.min(wallet.depositBalance, betAmount);
+    const amountFromWinning = betAmount - amountFromDeposit;
+
+    // Deduct from deposit wallet first
+    wallet.depositBalance -= amountFromDeposit;
+
+    // Deduct remaining from winning wallet (if needed)
+    if (amountFromWinning > 0) {
+      wallet.winningBalance -= amountFromWinning;
+    }
+
+    // Update total balance
     wallet.totalBalance -= betAmount;
     await wallet.save();
 
-    // Create transaction record
-    const transaction = new Transaction({
-      userId: req.user.id,
-      type: 'penalty',
-      amount: betAmount,
-      status: 'success',
-      description: `Room creation bet - ₹${betAmount}`,
-      walletType: 'deposit'
-    });
-    await transaction.save();
+    // Create transaction record(s)
+    if (amountFromDeposit > 0) {
+      const depositTransaction = new Transaction({
+        userId: req.user.id,
+        type: 'Room Create',
+        amount: amountFromDeposit,
+        status: 'success',
+        description: `Room creation bet from deposit - ₹${amountFromDeposit}`,
+        walletType: 'deposit'
+      });
+      await depositTransaction.save();
+    }
+
+    if (amountFromWinning > 0) {
+      const winningTransaction = new Transaction({
+        userId: req.user.id,
+        type: 'penalty',
+        amount: amountFromWinning,
+        status: 'success',
+        description: `Room creation bet from winning - ₹${amountFromWinning}`,
+        walletType: 'winning'
+      });
+      await winningTransaction.save();
+    }
 
     // Create room
     const room = new Room({
       createdBy: req.user.id,
       betAmount,
-      ludoRoomCode,
+      ludoRoomCode: ludoRoomCode || null,
       players: [{
         userId: req.user.id,
         ludoUsername,
@@ -136,25 +161,50 @@ const joinRoom = async (req, res) => {
     if (!wallet || wallet.totalBalance < room.betAmount) {
       return res.status(400).json({
         success: false,
-        message: 'Insufficient balance to join room'
+        message: `Insufficient balance. Required: ₹${room.betAmount}, Available: ₹${wallet ? wallet.totalBalance : 0}`
       });
     }
 
-    // Deduct bet amount from user's wallet
-    wallet.depositBalance -= room.betAmount;
+    // Calculate how much to deduct from each wallet
+    const amountFromDeposit = Math.min(wallet.depositBalance, room.betAmount);
+    const amountFromWinning = room.betAmount - amountFromDeposit;
+
+    // Deduct from deposit wallet first
+    wallet.depositBalance -= amountFromDeposit;
+
+    // Deduct remaining from winning wallet (if needed)
+    if (amountFromWinning > 0) {
+      wallet.winningBalance -= amountFromWinning;
+    }
+
+    // Update total balance
     wallet.totalBalance -= room.betAmount;
     await wallet.save();
 
-    // Create transaction record
-    const transaction = new Transaction({
-      userId: req.user.id,
-      type: 'penalty',
-      amount: room.betAmount,
-      status: 'success',
-      description: `Joined room ${roomId} - ₹${room.betAmount}`,
-      walletType: 'deposit'
-    });
-    await transaction.save();
+    // Create transaction record(s)
+    if (amountFromDeposit > 0) {
+      const depositTransaction = new Transaction({
+        userId: req.user.id,
+        type: 'penalty',
+        amount: amountFromDeposit,
+        status: 'success',
+        description: `Joined room ${roomId} from deposit - ₹${amountFromDeposit}`,
+        walletType: 'deposit'
+      });
+      await depositTransaction.save();
+    }
+
+    if (amountFromWinning > 0) {
+      const winningTransaction = new Transaction({
+        userId: req.user.id,
+        type: 'penalty',
+        amount: amountFromWinning,
+        status: 'success',
+        description: `Joined room ${roomId} from winning - ₹${amountFromWinning}`,
+        walletType: 'winning'
+      });
+      await winningTransaction.save();
+    }
 
     // Add player to room
     room.players.push({
@@ -207,7 +257,6 @@ const getRoomCode = async (req, res) => {
       });
     }
 
-    // Check if user is in the room
     const isPlayer = room.players.some(player =>
       player.userId.toString() === req.user.id
     );
@@ -218,7 +267,6 @@ const getRoomCode = async (req, res) => {
       });
     }
 
-    // Check if room is live
     if (room.status !== 'live') {
       return res.status(400).json({
         success: false,
@@ -226,7 +274,6 @@ const getRoomCode = async (req, res) => {
       });
     }
 
-    // Check if admin has provided room code
     if (!room.ludoRoomCode) {
       return res.status(400).json({
         success: false,
@@ -250,6 +297,129 @@ const getRoomCode = async (req, res) => {
 
   } catch (error) {
     console.error('Get room code error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+const getLudoRoomCode = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    console.log('getludoroomcode');
+
+    // Populate 'createdBy' to get the full user object for the room creator
+    const room = await Room.findOne({ roomId }).populate('createdBy', 'fullName username');
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    // Only approved players can get the room code
+    const isApprovedPlayer = room.players.some(player =>
+      player.userId.toString() === req.user.id && player.status === 'approved'
+    );
+    if (!isApprovedPlayer) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not an approved player in this room'
+      });
+    }
+
+    // Room must be live to get the code
+    if (room.status !== 'live') {
+      return res.status(400).json({
+        success: false,
+        message: 'Room is not live yet or room code not provided by admin.'
+      });
+    }
+
+    if (!room.ludoRoomCode) {
+      return res.status(200).json({
+        success: true,
+        message: 'Room code not yet provided by the room creator',
+        data: {
+          roomId: room.roomId,
+          ludoRoomCode: null,
+          codeAvailable: false
+        }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        roomCreator: room.createdBy ? { // Ensure createdBy exists before accessing properties
+          id: room.createdBy._id,
+          fullName: room.createdBy.fullName,
+          username: room.createdBy.username
+        } : null,
+        roomId: room.roomId,
+        ludoRoomCode: room.ludoRoomCode,
+        codeAvailable: true,
+      }
+    });
+  } catch (error) {
+    console.error('Get ludo room code error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+
+const saveLudoRoomCode = async (req, res) => {
+  try {
+    const { roomId, ludoRoomCode } = req.body;
+
+    if (!roomId || !ludoRoomCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Room ID and Ludo Room Code are required'
+      });
+    }
+
+    const room = await Room.findOne({ roomId });
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    if (room.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only room creator can add or update the room code'
+      });
+    }
+
+    if (room.status !== 'pending' && room.status !== 'live') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot update room code. Room status is '${room.status}'`
+      });
+    }
+
+    room.ludoRoomCode = ludoRoomCode;
+    await room.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Ludo room code saved successfully',
+      data: {
+        roomId: room.roomId,
+        ludoRoomCode: room.ludoRoomCode
+      }
+    });
+
+  } catch (error) {
+    console.error('Save ludo room code error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -309,6 +479,8 @@ const getAllRooms = async (req, res) => {
     if (status && ['pending', 'live', 'ended', 'finished'].includes(status)) {
       query.status = status;
     }
+
+
     console.log(query)
     const rooms = await Room.find(query)
       .populate('createdBy', 'fullName username')
@@ -1138,7 +1310,7 @@ const cancelRoom = async (req, res) => {
         const refundDescription = `Refund for cancelled room ${roomId}.` + (reason ? ` Reason: ${reason}` : '');
         const refundTransaction = new Transaction({
           userId: player.userId._id,
-          type: 'deposit',
+          type: 'Room Cancellation Refund',
           amount: room.betAmount,
           status: 'success',
           description: refundDescription,
@@ -1174,7 +1346,6 @@ const cancelRoom = async (req, res) => {
 };
 
 
-
 // New function to request mutual room cancellation
 const requestMutualRoomCancellation = async (req, res) => {
   try {
@@ -1206,11 +1377,11 @@ const requestMutualRoomCancellation = async (req, res) => {
       });
     }
 
-    // Only allow mutual cancellation for 'live' rooms
-    if (room.status !== 'live') {
+    // Only allow mutual cancellation for 'pending' or 'live' rooms
+    if (!['pending', 'live'].includes(room.status)) {
       return res.status(400).json({
         success: false,
-        message: `Cannot request mutual cancellation. Room status is '${room.status}'. Only 'live' rooms can be mutually cancelled.`
+        message: `Cannot request mutual cancellation. Room status is '${room.status}'. Only 'pending' or 'live' rooms can be mutually cancelled.`
       });
     }
 
@@ -1284,10 +1455,13 @@ const requestMutualRoomCancellation = async (req, res) => {
   }
 };
 
+
 module.exports = {
   createRoom,
   joinRoom,
   getRoomCode,
+  getLudoRoomCode,
+  saveLudoRoomCode,
   getUserRooms,
   getAllRooms,
   checkRoomResultManual,

@@ -42,7 +42,7 @@ const roomSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'live', 'ended', 'finished'],
+    enum: ['pending', 'live', 'ended', 'finished', 'cancelled'],
     default: 'pending'
   },
   ludoRoomCode: {

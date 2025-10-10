@@ -127,7 +127,6 @@ const deposit = async (req, res) => {
   }
 };
 
-// Withdraw money
 const withdraw = async (req, res) => {
   try {
     const { amount, type, upiId, bankAccountNumber } = req.body;
@@ -178,7 +177,7 @@ const withdraw = async (req, res) => {
 
     // Update wallet balance - deduct only from winning balance
     wallet.winningBalance -= amount;
-    wallet.totalBalance -= amount;
+    wallet.totalBalance -= amount; // Total balance is also updated to reflect the change in winning balance
 
     await wallet.save();
 
@@ -220,6 +219,7 @@ const withdraw = async (req, res) => {
     });
   }
 };
+
 
 // Get transaction history
 const getTransactionHistory = async (req, res) => {
