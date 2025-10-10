@@ -3,6 +3,8 @@ const {
   createRoom,
   joinRoom,
   getRoomCode,
+  getLudoRoomCode,
+  saveLudoRoomCode,
   getUserRooms,
   getUserFinishedGames,
   getAllRooms,
@@ -11,7 +13,7 @@ const {
   handleJoinRequest,
   getPendingRequests,
   cancelRoom,
-  requestMutualRoomCancellation // NEW IMPORT
+  requestMutualRoomCancellation
 } = require('../controllers/gameController');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -24,8 +26,14 @@ router.post('/create-room', auth, createRoom);
 // POST /api/game/join-room - Join a room
 router.post('/join-room', auth, joinRoom);
 
-// GET /api/game/room-code/:roomId - Get room code for joined room
+// GET /api/game/room-code/:roomId - Get room code for joined room (only when live)
 router.get('/room-code/:roomId', auth, getRoomCode);
+
+// GET /api/game/ludo-room-code/:roomId - Get ludo room code for any player
+router.get('/ludo-room-code/:roomId', auth, getLudoRoomCode);
+
+// POST /api/game/save-ludo-room-code - Save or update ludo room code (creator only)
+router.post('/save-ludo-room-code', auth, saveLudoRoomCode);
 
 // GET /api/game/my-rooms - Get user's rooms (can be filtered by status)
 router.get('/my-rooms', auth, getUserRooms);
@@ -51,7 +59,7 @@ router.get('/pending-requests', auth, getPendingRequests);
 // DELETE /api/game/cancel-room/:roomId - Cancel a room (existing logic)
 router.delete('/cancel-room/:roomId', auth, cancelRoom);
 
-// POST /api/game/request-mutual-cancellation - Request mutual cancellation of a room (NEW ROUTE)
+// POST /api/game/request-mutual-cancellation - Request mutapiual cancellation of a room (NEW ROUTE)
 router.post('/request-mutual-cancellation', auth, requestMutualRoomCancellation);
 
 module.exports = router;
