@@ -508,7 +508,8 @@ const getAllRooms = async (req, res) => {
           players: room.players.map(p => ({
             fullName: p.userId.fullName,
             ludoUsername: p.ludoUsername,
-            joinedAt: p.joinedAt
+            joinedAt: p.joinedAt,
+            _id: p.userId._id
           })),
           createdAt: room.createdAt
         })),
