@@ -4,6 +4,8 @@ const User = require('../models/User');
 const axios = require('axios'); // Import axios for HTTP requests
 const FormData = require('form-data'); // Import FormData for x-www-form-urlencoded
 
+
+
 // Get wallet balance
 const getWallet = async (req, res) => {
   try {
@@ -157,6 +159,33 @@ const withdraw = async (req, res) => {
         success: false,
         message: 'Bank account number is required for bank withdrawal'
       });
+    }
+
+    // CHECK FOR 3-HOUR COOLDOWN
+    // Find the last withdrawal request (regardless of status)
+    const lastWithdrawal = await Transaction.findOne({
+      userId: req.user.id,
+      type: 'withdraw'
+    }).sort({ createdAt: -1 });
+
+    if (lastWithdrawal) {
+      const THREE_HOURS = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+      const timeSinceLastWithdrawal = Date.now() - lastWithdrawal.createdAt.getTime();
+
+      if (timeSinceLastWithdrawal < THREE_HOURS) {
+        const remainingTime = THREE_HOURS - timeSinceLastWithdrawal;
+        const hoursLeft = Math.floor(remainingTime / (60 * 60 * 1000));
+        const minutesLeft = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+
+        return res.status(429).json({
+          success: false,
+          message: `You can only withdraw once every 3 hours. Please wait ${hoursLeft} hour(s) and ${minutesLeft} minute(s) before trying again.`,
+          data: {
+            remainingTimeMs: remainingTime,
+            nextWithdrawalTime: new Date(lastWithdrawal.createdAt.getTime() + THREE_HOURS)
+          }
+        });
+      }
     }
 
     const wallet = await Wallet.findOne({ userId: req.user.id });
