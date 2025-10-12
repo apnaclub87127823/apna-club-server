@@ -392,20 +392,31 @@ const saveLudoRoomCode = async (req, res) => {
       });
     }
 
+    // Only the creator can add the room code
     if (room.createdBy.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
-        message: 'Only room creator can add or update the room code'
+        message: 'Only the room creator can add the room code'
       });
     }
 
+    // If code already exists, block re-saving or updating
+    if (room.ludoRoomCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ludo room code already set. You cannot change it again.'
+      });
+    }
+
+    // Only allow code adding in 'pending' or 'live' rooms
     if (room.status !== 'pending' && room.status !== 'live') {
       return res.status(400).json({
         success: false,
-        message: `Cannot update room code. Room status is '${room.status}'`
+        message: `Cannot add room code. Room status is '${room.status}'`
       });
     }
 
+    // Save the code for the first time
     room.ludoRoomCode = ludoRoomCode;
     await room.save();
 
@@ -426,6 +437,7 @@ const saveLudoRoomCode = async (req, res) => {
     });
   }
 };
+
 
 
 
